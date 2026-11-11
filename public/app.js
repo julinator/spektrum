@@ -1,4 +1,8 @@
-/* Spektrum – vertikal durch Themen, horizontal durch Blickwinkel. Apple-Optik. */
+/* Spektrum – vertikal durch Themen, horizontal durch Blickwinkel. Apple-Optik.
+   Die Themen werden direkt im Browser gebildet; Cloudflare liefert nur die Feeds. */
+
+import { buildSnapshot } from "./js/pipeline.js";
+import { LEAN_LABEL } from "./js/sources.js";
 
 const $ = (id) => document.getElementById(id);
 const feed = $("feed");
@@ -8,22 +12,21 @@ const refreshButton = $("refresh");
 const topicsDialog = $("topics-dialog");
 const topicsList = $("topics-list");
 const statusLine = $("status-line");
-const lanLine = $("lan-line");
 const sourcesDialog = $("sources-dialog");
 const sourcesForm = $("sources-form");
 const welcome = $("welcome");
 
-const LEAN_LABEL = { "links": "Links", "mitte-links": "Mitte-links", "mitte": "Mitte", "mitte-rechts": "Mitte-rechts", "rechts": "Rechts" };
 const LEAN_ORDER = ["links", "mitte-links", "mitte", "mitte-rechts", "rechts"];
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const scrollBehavior = reducedMotion ? "auto" : "smooth";
 
 let snapshot = null;
-let status = null;
+let refreshing = false;
+const STALE_MINUTES = 10;
+const SNAPSHOT_KEY = "spektrum-snapshot-v1";
 let visible = [];
 let activeTopicIndex = 0;
-let pollTimer = null;
 
 /* ---------- Symbole (an SF Symbols angelehnt) ---------- */
 
@@ -291,14 +294,9 @@ function renderStatusLine() {
   if (snapshot?.generatedAt) parts.push(`Stand: ${formatTime(snapshot.generatedAt)}.`);
   const total = (snapshot?.topics ?? []).length;
   if (total) parts.push(`${total} Themen aus ${(snapshot.sources ?? []).filter((s) => !s.error).length} Quellen.`);
-  parts.push(snapshot?.ai ? `Zusammenfassungen von ${snapshot.model}.` : "Originaltexte der Medien, ohne KI.");
-  if (status?.refreshMinutes) parts.push(`Wird ${status.static ? "etwa " : ""}alle ${status.refreshMinutes} Minuten aktualisiert.`);
+  parts.push("Originaltexte der Medien, ohne KI.");
+  parts.push(`Neue Themen werden beim Öffnen geladen, wenn der Stand älter als ${STALE_MINUTES} Minuten ist.`);
   statusLine.textContent = parts.join(" ");
-
-  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
-  const lan = status?.lanUrls?.[0];
-  lanLine.hidden = !(local && lan);
-  if (local && lan) lanLine.textContent = `Auf dem iPhone ${lan} in Safari öffnen, dann „Teilen“ und „Zum Home-Bildschirm“.`;
 }
 
 /* ---------- Quellen ---------- */
@@ -411,7 +409,7 @@ welcome.addEventListener("cancel", (event) => { event.preventDefault(); finishWe
 $("topics-btn").addEventListener("click", () => { renderTopicList(); openSheet(topicsDialog); });
 $("sources-btn").addEventListener("click", () => { renderSources(); openSheet(sourcesDialog); });
 
-/* ---------- Hinweise und Status ---------- */
+/* ---------- Hinweise, Speichern, Aktualisieren ---------- */
 
 function showNotice(text, progress = false) {
   notice.hidden = !text;
@@ -420,7 +418,7 @@ function showNotice(text, progress = false) {
 }
 
 function noticeFromSnapshot() {
-  const errors = (snapshot?.errors ?? []).filter((e) => !e.startsWith("KI-Zusammenfassungen sind aus"));
+  const errors = snapshot?.errors ?? [];
   if (!errors.length) return "";
   const feedErrors = errors.filter((e) => e.includes("Feed nicht lesbar"));
   const other = errors.filter((e) => !e.includes("Feed nicht lesbar"));
@@ -428,53 +426,39 @@ function noticeFromSnapshot() {
   return feedErrors.length === 1 ? feedErrors[0] : `${feedErrors.length} Quellen konnten gerade nicht gelesen werden.`;
 }
 
-async function loadTopics() {
-  const res = await fetch("api/topics.json", { cache: "no-store" });
-  snapshot = await res.json();
-  render();
-  renderSources();
-  showNotice(noticeFromSnapshot());
+function isStale() {
+  if (!snapshot?.generatedAt) return true;
+  return Date.now() - new Date(snapshot.generatedAt).getTime() > STALE_MINUTES * 60_000;
 }
 
-async function pollStatus() {
-  clearTimeout(pollTimer);
+function setRefreshLabel(text, disabled) {
+  refreshButton.disabled = disabled;
+  refreshButton.querySelector(".row-label").textContent = text;
+}
+
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
+  setRefreshLabel("Wird aktualisiert …", true);
   try {
-    const res = await fetch("api/status.json", { cache: "no-store" });
-    status = await res.json();
-    refreshButton.closest(".group").hidden = Boolean(status.static);
+    snapshot = await buildSnapshot(snapshot, (done, total) => {
+      showNotice(done < total ? `Quellen werden gelesen … ${done} von ${total}` : "Themen werden gebündelt …", true);
+    });
+    store(SNAPSHOT_KEY, snapshot);
+    render();
+    renderSources();
+    showNotice(noticeFromSnapshot());
+  } catch (err) {
+    showNotice(`Aktualisierung fehlgeschlagen: ${err?.message || err}`);
+    if (!snapshot) renderState("Keine Verbindung", "Die Quellen konnten nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut.");
+  } finally {
+    refreshing = false;
+    setRefreshLabel("Jetzt aktualisieren", false);
     renderStatusLine();
-    if (status.refreshing) {
-      refreshButton.disabled = true;
-      refreshButton.querySelector(".row-label").textContent = "Wird aktualisiert …";
-      showNotice(status.progress || "Wird aktualisiert …", true);
-      pollTimer = setTimeout(pollStatus, 3000);
-      return;
-    }
-    refreshButton.disabled = false;
-    refreshButton.querySelector(".row-label").textContent = "Jetzt aktualisieren";
-    if (status.lastRefreshError) showNotice(`Aktualisierung fehlgeschlagen: ${status.lastRefreshError}`);
-    if (status.generatedAt !== snapshot?.generatedAt) await loadTopics();
-    else showNotice(noticeFromSnapshot());
-    if (!snapshot?.generatedAt) pollTimer = setTimeout(pollStatus, 5000);
-  } catch {
-    pollTimer = setTimeout(pollStatus, 5000);
   }
 }
 
-refreshButton.addEventListener("click", async () => {
-  refreshButton.disabled = true;
-  try {
-    const res = await fetch("api/refresh", { method: "POST" });
-    const body = await res.json();
-    if (body.upToDate) {
-      showNotice("Die Themen sind auf dem neuesten Stand.");
-      setTimeout(() => showNotice(noticeFromSnapshot()), 4000);
-    }
-  } catch {
-    showNotice("Der Server ist nicht erreichbar.");
-  }
-  pollStatus();
-});
+refreshButton.addEventListener("click", () => refresh());
 
 /* ---------- Tastatur ---------- */
 
@@ -487,23 +471,21 @@ document.addEventListener("keydown", (event) => {
     case "ArrowLeft": if (panels) { scrollToPanel(panels, currentPanel(panels) - 1); event.preventDefault(); } break;
     case "ArrowDown": case "PageDown": case "j": scrollToTopic(activeTopicIndex + 1); event.preventDefault(); break;
     case "ArrowUp": case "PageUp": case "k": scrollToTopic(activeTopicIndex - 1); event.preventDefault(); break;
-    case "r": if (!status?.static) refreshButton.click(); break;
+    case "r": refresh(); break;
   }
 });
 
 /* ---------- Start ---------- */
 
 hydrateIcons();
-(async function init() {
-  try {
-    await loadTopics();
-  } catch {
-    renderState("Keine Verbindung", "Die Themen konnten nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut.");
-  }
-  pollStatus();
-  if (!store("spektrum-welcome")) openSheet(welcome);
-  // Beim Zurückkehren in die App (z. B. vom Home-Bildschirm) neue Themen holen
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pollStatus(); });
-  setInterval(() => { if (document.visibilityState === "visible") pollStatus(); }, 5 * 60_000);
-  if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
-})();
+snapshot = store(SNAPSHOT_KEY);
+render();
+renderSources();
+showNotice(noticeFromSnapshot());
+if (!store("spektrum-welcome")) openSheet(welcome);
+if (isStale()) refresh();
+// Beim Zurückkehren in die App (z. B. vom Home-Bildschirm) neue Themen holen
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && isStale()) refresh();
+});
+if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});

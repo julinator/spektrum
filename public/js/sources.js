@@ -3,23 +3,13 @@
  *
  * `position` ist eine grobe redaktionelle Verortung von 0 (links) bis 100 (rechts).
  * Sie beruht auf gängigen Einschätzungen der deutschen Medienlandschaft und ist
- * bewusst eine Näherung: Du kannst die Werte hier jederzeit anpassen oder Quellen
- * mit `enabled: false` abschalten.
+ * bewusst eine Näherung: Werte anpassen oder Quellen mit `enabled: false` abschalten.
+ *
+ * Diese Datei nutzen sowohl die App (Browser) als auch der Cloudflare-Worker,
+ * der nur Feeds aus dieser Liste abruft.
  */
 
-export type Lean = "links" | "mitte-links" | "mitte" | "mitte-rechts" | "rechts";
-
-export interface Source {
-  id: string;
-  name: string;
-  site: string;
-  feed: string;
-  position: number; // 0 = links, 100 = rechts
-  enabled: boolean;
-  maxItems?: number; // Feeds mit sehr vielen Einträgen begrenzen
-}
-
-export const LEAN_LABEL: Record<Lean, string> = {
+export const LEAN_LABEL = {
   "links": "Links",
   "mitte-links": "Mitte-links",
   "mitte": "Mitte",
@@ -27,7 +17,7 @@ export const LEAN_LABEL: Record<Lean, string> = {
   "rechts": "Rechts",
 };
 
-export function leanFor(position: number): Lean {
+export function leanFor(position) {
   if (position < 25) return "links";
   if (position < 45) return "mitte-links";
   if (position <= 55) return "mitte";
@@ -35,7 +25,7 @@ export function leanFor(position: number): Lean {
   return "rechts";
 }
 
-export const SOURCES: Source[] = [
+export const SOURCES = [
   // --- links ---
   { id: "jacobin", name: "Jacobin", site: "https://jacobin.de", feed: "https://jacobin.de/rss", position: 6, enabled: false },
   { id: "nd", name: "nd", site: "https://www.nd-aktuell.de", feed: "https://www.nd-aktuell.de/rss/aktuell.php", position: 12, enabled: true },
@@ -73,10 +63,10 @@ export const SOURCES: Source[] = [
   { id: "jf", name: "Junge Freiheit", site: "https://jungefreiheit.de", feed: "https://jungefreiheit.de/feed/", position: 90, enabled: true },
 ];
 
-export function activeSources(): Source[] {
+export function activeSources() {
   return SOURCES.filter((s) => s.enabled).sort((a, b) => a.position - b.position);
 }
 
-export function sourceById(id: string): Source | undefined {
+export function sourceById(id) {
   return SOURCES.find((s) => s.id === id);
 }

@@ -1,6 +1,7 @@
-/* Service Worker: Netz zuerst, ohne Netz der zuletzt gesehene Stand (nur über HTTPS aktiv). */
-const CACHE = "spektrum-v4";
-const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "favicon.svg", "icons/icon-192.png"];
+/* Service Worker: App-Dateien Netz zuerst, ohne Netz aus dem Speicher (nur über HTTPS aktiv).
+   Feeds werden nicht zwischengespeichert, den letzten Stand hält die App selbst. */
+const CACHE = "spektrum-v5";
+const SHELL = ["./", "style.css", "app.js", "js/sources.js", "js/cluster.js", "js/feeds.js", "js/pipeline.js", "manifest.webmanifest", "favicon.svg", "icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -17,7 +18,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith("/api/refresh")) return;
+  if (url.pathname.includes("/feed/")) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {

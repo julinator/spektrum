@@ -5,21 +5,10 @@
   "type": "module",
   "description": "Nachrichten-Themen im politischen Spektrum: vertikal durch Themen scrollen, horizontal durch die Berichterstattung von links nach rechts swipen.",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server/index.ts",
-    "refresh": "node --env-file-if-exists=.env server/refresh.ts",
-    "build": "node --env-file-if-exists=.env server/build.ts",
-    "check": "tsc -p tsconfig.json"
-  },
-  "engines": {
-    "node": ">=22.18"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^1.7.0",
-    "rss-parser": "^3.13.0",
-    "zod": "^4.6.7"
+    "dev": "wrangler dev --ip 0.0.0.0 --port 8787",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "wrangler": "4.154.0"
   }
 }
