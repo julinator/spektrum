@@ -428,7 +428,9 @@ function noticeFromSnapshot() {
 
 function isStale() {
   if (!snapshot?.generatedAt) return true;
-  return Date.now() - new Date(snapshot.generatedAt).getTime() > STALE_MINUTES * 60_000;
+  // Fehlten beim letzten Mal Quellen (z. B. App mitten im Laden verlassen), früher erneut versuchen
+  const minutes = snapshot.errors?.length ? 1 : STALE_MINUTES;
+  return Date.now() - new Date(snapshot.generatedAt).getTime() > minutes * 60_000;
 }
 
 function setRefreshLabel(text, disabled) {

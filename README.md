@@ -25,7 +25,7 @@ dass dein Mac laufen muss.
 
 ## Als App auf dem iPhone
 
-1. In **Safari** die Spektrum-Adresse öffnen (`https://spektrum.<dein-name>.workers.dev`).
+1. In **Safari** die Spektrum-Adresse öffnen (`https://spektrum.spektrum.workers.dev`).
 2. Unten auf **Teilen** tippen, dann **Zum Home-Bildschirm**, dann **Hinzufügen**.
 
 Spektrum liegt dann mit eigenem Icon auf dem Home-Bildschirm und öffnet sich ohne
