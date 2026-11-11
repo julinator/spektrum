@@ -1,0 +1,70 @@
+# Spektrum: Feeds alle 30 Minuten lesen, Themen bilden und auf GitHub Pages veröffentlichen.
+name: Spektrum aktualisieren
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # alle 30 Minuten (krumme Minuten, weil volle Stunden bei GitHub oft verzögert sind)
+    - cron: "17 3 * * 1"     # montags: Zeitplan wachhalten
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      # Letzten Stand mitnehmen, damit ein Ausfall der Quellen keine leere Seite erzeugt
+      - uses: actions/cache@v6
+        with:
+          path: data
+          key: spektrum-data-${{ github.run_id }}
+          restore-keys: spektrum-data-
+
+      - run: node server/build.ts
+        env:
+          KI: aus
+          REFRESH_MINUTES: "30"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  # GitHub schaltet Zeitpläne in Repos ohne Aktivität nach 60 Tagen ab.
+  # Einmal pro Woche den Workflow ausdrücklich aktivieren, damit er weiterläuft.
+  keepalive:
+    if: github.event.schedule == '17 3 * * 1'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pages.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}

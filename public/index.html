@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Spektrum</title>
+  <meta name="description" content="Ein Thema, viele Blickwinkel: Nachrichten-Berichterstattung von links nach rechts.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Spektrum">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <button class="glass-btn" id="topics-btn" type="button" aria-label="Themenliste" aria-haspopup="dialog" aria-controls="topics-dialog" data-icon="list"></button>
+    <div class="nav-title">
+      <h1>Spektrum</h1>
+      <p id="counter" aria-live="polite"></p>
+    </div>
+    <button class="glass-btn" id="sources-btn" type="button" aria-label="Quellen auswählen" aria-haspopup="dialog" aria-controls="sources-dialog" data-icon="sliders"></button>
+  </header>
+  <p class="banner" id="notice" hidden></p>
+  <main class="feed" id="feed" aria-label="Themen"></main>
+
+  <dialog class="sheet sheet-welcome" id="welcome" aria-labelledby="welcome-title">
+    <div class="sheet-body">
+      <h2 class="welcome-title" id="welcome-title">Willkommen bei Spektrum</h2>
+      <ul class="feature-list">
+        <li><span class="feature-icon" data-icon="updown"></span><span><strong>Themen durchblättern</strong>Wische nach oben oder unten, um zum nächsten Thema zu kommen.</span></li>
+        <li><span class="feature-icon" data-icon="leftright"></span><span><strong>Blickwinkel vergleichen</strong>Wische zur Seite, um dieselbe Nachricht bei anderen Quellen zu lesen, von politisch links nach rechts.</span></li>
+        <li><span class="feature-icon" data-icon="spectrum"></span><span><strong>Einordnung auf einen Blick</strong>Die Leiste zeigt, wo eine Quelle steht. Tippe auf einen Punkt, um direkt dorthin zu springen.</span></li>
+      </ul>
+      <button class="capsule-btn" id="welcome-ok" type="button">Weiter</button>
+    </div>
+  </dialog>
+
+  <dialog class="sheet" id="topics-dialog" aria-labelledby="topics-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <button class="glass-btn small" type="button" data-close aria-label="Schließen" data-icon="xmark"></button>
+      <h2 id="topics-title">Themen</h2>
+      <span class="sheet-spacer"></span>
+    </header>
+    <div class="sheet-body">
+      <ul class="group" id="topics-list"></ul>
+      <ul class="group">
+        <li><button class="row row-action" id="refresh" type="button"><span class="row-icon" data-icon="refresh"></span><span class="row-label">Jetzt aktualisieren</span></button></li>
+      </ul>
+      <p class="group-footer" id="status-line"></p>
+      <p class="group-footer" id="lan-line" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog class="sheet" id="sources-dialog" aria-labelledby="sources-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <span class="sheet-spacer"></span>
+      <h2 id="sources-title">Quellen</h2>
+      <button class="glass-btn small prominent" type="button" data-close aria-label="Fertig" data-icon="check"></button>
+    </header>
+    <div class="sheet-body">
+      <form id="sources-form"></form>
+      <p class="group-footer">Ausgeschaltete Quellen werden ausgeblendet. Die Einordnung von links nach rechts ist eine grobe redaktionelle Näherung.</p>
+    </div>
+  </dialog>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
