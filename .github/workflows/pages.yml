@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -49,7 +49,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -61,7 +61,7 @@ jobs:
   # Einmal pro Woche den Workflow ausdrücklich aktivieren, damit er weiterläuft.
   keepalive:
     if: github.event.schedule == '17 3 * * 1'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     steps:

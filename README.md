@@ -31,7 +31,7 @@ bildet die Themen und veröffentlicht die fertige Seite kostenlos auf GitHub Pag
 Das erledigt der Workflow [.github/workflows/pages.yml](.github/workflows/pages.yml).
 Dein Mac muss dafür nicht laufen.
 
-- Adresse: `https://<dein-github-name>.github.io/spektrum/`
+- Adresse: `https://julinator.github.io/spektrum/`
 - Neu veröffentlichen nach Änderungen: einfach `git push`.
 - Sofort aktualisieren: auf GitHub unter **Actions → Spektrum aktualisieren → Run workflow**.
 - GitHub schaltet Zeitpläne in Repos ohne Aktivität nach 60 Tagen ab. Ein wöchentlicher
@@ -42,7 +42,7 @@ Lokal bauen, ohne zu veröffentlichen: `npm run build` (Ergebnis in `site/`).
 
 ## Als App auf dem iPhone
 
-1. Auf dem iPhone **Safari** öffnen und `https://<dein-github-name>.github.io/spektrum/` aufrufen.
+1. Auf dem iPhone **Safari** öffnen und `https://julinator.github.io/spektrum/` aufrufen.
 2. Unten auf **Teilen** tippen, dann **Zum Home-Bildschirm**, dann **Hinzufügen**.
 
 Spektrum liegt dann mit eigenem Icon auf dem Home-Bildschirm und öffnet sich ohne
