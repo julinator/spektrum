@@ -26,16 +26,24 @@
     </div>
     <button class="glass-btn" id="sources-btn" type="button" aria-label="Quellen auswählen" aria-haspopup="dialog" aria-controls="sources-dialog" data-icon="sliders"></button>
   </header>
-  <p class="banner" id="notice" hidden></p>
-  <main class="feed" id="feed" aria-label="Themen"></main>
+  <p class="banner" id="notice" hidden aria-live="polite"></p>
+  <div class="feed-wrap">
+    <div class="ptr" id="ptr" data-mode="idle" aria-hidden="true">
+      <span class="ptr-icon" data-icon="arrowDown"></span>
+      <span class="ptr-spinner"></span>
+      <span class="ptr-label">Zum Aktualisieren ziehen</span>
+    </div>
+    <main class="feed" id="feed" aria-label="Themen"></main>
+  </div>
 
   <dialog class="sheet sheet-welcome" id="welcome" aria-labelledby="welcome-title">
     <div class="sheet-body">
       <h2 class="welcome-title" id="welcome-title">Willkommen bei Spektrum</h2>
       <ul class="feature-list">
         <li><span class="feature-icon" data-icon="updown"></span><span><strong>Themen durchblättern</strong>Wische nach oben oder unten, um zum nächsten Thema zu kommen.</span></li>
-        <li><span class="feature-icon" data-icon="leftright"></span><span><strong>Blickwinkel vergleichen</strong>Wische zur Seite, um dieselbe Nachricht bei anderen Quellen zu lesen, von politisch links nach rechts.</span></li>
+        <li><span class="feature-icon" data-icon="leftright"></span><span><strong>Blickwinkel vergleichen</strong>Die erste Karte zeigt alle Schlagzeilen im Überblick. Wische zur Seite, um die einzelnen Quellen zu lesen, von politisch links nach rechts.</span></li>
         <li><span class="feature-icon" data-icon="spectrum"></span><span><strong>Einordnung auf einen Blick</strong>Die Leiste zeigt, wo eine Quelle steht. Tippe auf einen Punkt, um direkt dorthin zu springen.</span></li>
+        <li><span class="feature-icon" data-icon="arrowDown"></span><span><strong>Immer aktuell</strong>Neue Themen kommen beim Öffnen von selbst. Zieh die Themen nach unten, um sofort zu aktualisieren.</span></li>
       </ul>
       <button class="capsule-btn" id="welcome-ok" type="button">Weiter</button>
     </div>
@@ -49,6 +57,7 @@
       <span class="sheet-spacer"></span>
     </header>
     <div class="sheet-body">
+      <div id="saved-section"></div>
       <ul class="group" id="topics-list"></ul>
       <ul class="group">
         <li><button class="row row-action" id="refresh" type="button"><span class="row-icon" data-icon="refresh"></span><span class="row-label">Jetzt aktualisieren</span></button></li>
@@ -68,6 +77,26 @@
       <form id="sources-form"></form>
       <p class="group-footer">Ausgeschaltete Quellen werden ausgeblendet. Die Einordnung von links nach rechts ist eine grobe redaktionelle Näherung.</p>
     </div>
+  </dialog>
+
+  <dialog class="sheet" id="saved-dialog" aria-labelledby="saved-dialog-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <button class="glass-btn small" type="button" data-close aria-label="Schließen" data-icon="xmark"></button>
+      <h2 id="saved-dialog-title">Gemerktes Thema</h2>
+      <span class="sheet-spacer"></span>
+    </header>
+    <div class="sheet-body"></div>
+  </dialog>
+
+  <dialog class="sheet" id="lean-dialog" aria-labelledby="lean-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <span class="sheet-spacer"></span>
+      <h2 id="lean-title">Einordnung</h2>
+      <button class="glass-btn small" type="button" data-close aria-label="Schließen" data-icon="xmark"></button>
+    </header>
+    <div class="sheet-body"></div>
   </dialog>
 
   <script src="app.js" type="module"></script>

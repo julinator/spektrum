@@ -5,11 +5,18 @@ von links bis rechts, bündelt die aktuellen Meldungen zu Themen und zeigt dir f
 jedes Thema, wie die einzelnen Quellen darüber berichten.
 
 - **Hoch und runter wischen**: von Thema zu Thema.
-- **Seitlich wischen**: dieselbe Nachricht bei der nächsten Quelle, sortiert von
-  politisch links nach rechts. Die Leiste über dem Text zeigt, wo die Quelle steht.
-  Tippen auf einen Punkt springt direkt dorthin.
-- **Linker Knopf oben**: alle Themen als Liste, dazu „Jetzt aktualisieren“.
-- **Rechter Knopf oben**: Quellen ein- und ausschalten.
+- **Überblick**: Die erste Karte jedes Themas zeigt, wie viele Quellen links, in
+  der Mitte und rechts berichten, und alle Schlagzeilen von links nach rechts.
+  Greift eine Seite ein Thema kaum oder gar nicht auf, steht das als Hinweis dabei.
+- **Seitlich wischen**: dieselbe Nachricht bei der nächsten Quelle, mit Bild,
+  Anriss und Link zum Artikel. Die Leiste über dem Text zeigt, wo die Quelle steht.
+  Tippen auf einen Punkt springt direkt dorthin, Tippen auf das Etikett erklärt die Einordnung.
+- **Nach unten ziehen**: sofort aktualisieren.
+- **Merken und Teilen**: Lesezeichen und Teilen-Symbol neben jedem Thema.
+  Gemerkte Themen stehen oben in der Themenliste.
+- **Neu und gelesen**: Neue Themen sind markiert, gelesene erscheinen blasser.
+- **Linker Knopf oben**: Themenliste und Merkliste. **Rechter Knopf oben**: Quellen ein- und ausschalten.
+- Die Schrift folgt der Textgröße, die am iPhone eingestellt ist.
 
 ## So funktioniert es
 
@@ -19,6 +26,9 @@ dass dein Mac laufen muss.
 - Cloudflare liefert die App aus und holt die RSS-Feeds ab (`/feed/<quelle>`).
   Abgerufen werden nur Feeds aus der festen Liste in
   [public/js/sources.js](public/js/sources.js).
+- Gelesen werden die Politik-Feeds der Medien, damit es um Themen geht, bei denen
+  sich die Blickwinkel unterscheiden. Liveticker und Sammelartikel bleiben beim
+  Bündeln außen vor.
 - Dein iPhone bündelt die Meldungen selbst zu Themen, sobald du die App öffnest.
   Ist der letzte Stand älter als 10 Minuten, lädt sie neue Themen. Bis dahin zeigt
   sie sofort den gespeicherten Stand, auch ohne Netz.

@@ -41,11 +41,45 @@ function decode(buffer, contentType) {
   }
 }
 
+const MRSS = "http://search.yahoo.com/mrss/";
+
+/** Erstes Kind-Element mit einem der Namen (ohne Media-RSS-Elemente). */
 function child(el, ...names) {
   for (const name of names) {
-    for (const c of el.children) if (c.localName === name) return c;
+    for (const c of el.children) if (c.localName === name && c.namespaceURI !== MRSS) return c;
   }
   return null;
+}
+
+function cleanImageUrl(url) {
+  if (!url) return "";
+  const u = url.trim().replace(/^http:\/\//, "https://");
+  if (!/^https:\/\//.test(u)) return "";
+  if (/(\b|_)(1x1|pixel|spacer|tracking)(\b|_)/i.test(u)) return "";
+  return u;
+}
+
+/** Vorschaubild aus Anhang, Media-RSS oder dem ersten <img> im Anrisstext. */
+function imageOf(item, rawDescription) {
+  for (const c of item.children) {
+    if (c.localName === "enclosure") {
+      const type = c.getAttribute("type") ?? "";
+      const url = c.getAttribute("url") ?? "";
+      if (type.startsWith("image") || (!type && /\.(jpe?g|png|webp)(\?|$)/i.test(url))) return cleanImageUrl(url);
+    }
+  }
+  const media = [...item.getElementsByTagNameNS(MRSS, "*")].filter((m) => (m.localName === "content" || m.localName === "thumbnail") && m.getAttribute("url"));
+  if (media.length) {
+    const images = media.filter((m) => !m.getAttribute("medium") || m.getAttribute("medium") === "image");
+    const pool = images.length ? images : media;
+    // eine mittlere Größe bevorzugen (schont das Datenvolumen)
+    const sized = pool.map((m) => ({ m, w: Number(m.getAttribute("width")) || 0 }));
+    const good = sized.filter((x) => x.w >= 400 && x.w <= 1200).sort((a, b) => a.w - b.w)[0] ?? sized.sort((a, b) => b.w - a.w)[0];
+    const url = cleanImageUrl(good?.m.getAttribute("url"));
+    if (url) return url;
+  }
+  const img = /<img[^>]+src=["']([^"']+)["']/i.exec(rawDescription ?? "");
+  return cleanImageUrl(img?.[1]?.replace(/&amp;/g, "&"));
 }
 
 function linkOf(item, atom) {
@@ -73,6 +107,7 @@ export function parseFeed(xml, source) {
     if (seen.has(id)) continue;
     seen.add(id);
     const rawDesc = child(item, "description", "summary", "encoded", "content")?.textContent ?? "";
+    const rawContent = child(item, "encoded", "content")?.textContent ?? "";
     const dateText = child(item, "pubDate", "date", "published", "updated")?.textContent;
     const date = dateText ? new Date(dateText.trim()) : new Date();
     articles.push({
@@ -81,15 +116,33 @@ export function parseFeed(xml, source) {
       title,
       link,
       description: stripHtml(rawDesc).slice(0, 600),
+      image: imageOf(item, rawDesc + rawContent),
       publishedAt: (isNaN(date.getTime()) ? new Date() : date).toISOString(),
     });
   }
   return articles;
 }
 
-export async function fetchFeed(source) {
-  const res = await fetch(`feed/${source.id}`, { signal: AbortSignal.timeout(20_000) });
+async function fetchOne(source, index) {
+  const res = await fetch(`feed/${source.id}/${index}`, { signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const xml = decode(await res.arrayBuffer(), res.headers.get("content-type"));
   return parseFeed(xml, source);
+}
+
+/** Alle Feeds einer Quelle laden und zusammenführen. Fehler nur, wenn alle scheitern. */
+export async function fetchFeed(source) {
+  const results = await Promise.allSettled(source.feeds.map((_, i) => fetchOne(source, i)));
+  const ok = results.filter((r) => r.status === "fulfilled");
+  if (!ok.length) throw results[0].reason;
+  const seen = new Set();
+  const merged = [];
+  for (const r of ok) {
+    for (const a of r.value) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      merged.push(a);
+    }
+  }
+  return merged;
 }

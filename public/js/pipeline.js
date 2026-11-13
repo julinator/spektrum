@@ -13,35 +13,58 @@ export const CONFIG = {
   maxArticlesPerSourceInTopic: 3,
 };
 
-export async function buildSnapshot(previous, onProgress = () => {}) {
+/**
+ * Feeds lesen und Themen bilden.
+ * `onPartial` bekommt einen vorläufigen Stand, sobald fast alle Quellen da sind
+ * (langsame Feeds sollen den ersten Blick nicht aufhalten).
+ */
+export async function buildSnapshot(previous, onProgress = () => {}, { onPartial, partialAfterMs = 3500 } = {}) {
   const sources = activeSources();
-  let done = 0;
+  const results = new Map();
+  let partialSent = false;
+  const sendPartial = () => {
+    if (partialSent || !onPartial || results.size === sources.length || results.size < Math.ceil(sources.length / 2)) return;
+    partialSent = true;
+    onPartial(assemble(sources, results, null));
+  };
+  const timer = onPartial ? setTimeout(sendPartial, partialAfterMs) : null;
   onProgress(0, sources.length);
-  const results = await Promise.all(
+  await Promise.all(
     sources.map(async (source) => {
       try {
-        return { source, articles: await fetchFeed(source) };
+        results.set(source.id, { source, articles: await fetchFeed(source) });
       } catch (err) {
         const reason = err?.name === "TimeoutError" ? "Zeitüberschreitung" : err?.message || String(err);
-        return { source, articles: [], error: reason };
+        results.set(source.id, { source, articles: [], error: reason });
       } finally {
-        onProgress(++done, sources.length);
+        onProgress(results.size, sources.length);
+        if (results.size >= sources.length - 2) sendPartial();
       }
     }),
   );
+  clearTimeout(timer);
+  return assemble(sources, results, previous);
+}
 
+/** Aus den geladenen Feeds einen Stand bauen. Noch fehlende Quellen gelten als „lädt noch“, nicht als Fehler. */
+function assemble(sources, results, previous) {
   const cutoff = Date.now() - CONFIG.hoursBack * 3600_000;
   const stats = [];
   const fresh = [];
   const errors = [];
-  for (const r of results) {
+  for (const source of sources) {
+    const r = results.get(source.id);
+    if (!r) {
+      stats.push({ id: source.id, name: source.name, position: source.position, lean: leanFor(source.position), articles: 0, pending: true });
+      continue;
+    }
     const recent = r.articles
       .filter((a) => new Date(a.publishedAt).getTime() >= cutoff)
       .sort((x, y) => y.publishedAt.localeCompare(x.publishedAt))
       .slice(0, CONFIG.maxArticlesPerSource);
     fresh.push(...recent);
-    stats.push({ id: r.source.id, name: r.source.name, position: r.source.position, lean: leanFor(r.source.position), articles: recent.length, error: r.error });
-    if (r.error) errors.push(`${r.source.name}: Feed nicht lesbar (${r.error})`);
+    stats.push({ id: source.id, name: source.name, position: source.position, lean: leanFor(source.position), articles: recent.length, error: r.error });
+    if (r.error) errors.push(`${source.name}: Feed nicht lesbar (${r.error})`);
   }
 
   // Netzausfall: den letzten Stand behalten statt ihn zu leeren
@@ -77,7 +100,7 @@ export async function buildSnapshot(previous, onProgress = () => {}) {
         summary: "",
         emphasis: [],
         tone: "",
-        articles: list.slice(0, CONFIG.maxArticlesPerSourceInTopic).map((a) => ({ title: a.title, link: a.link, publishedAt: a.publishedAt, teaser: a.description })),
+        articles: list.slice(0, CONFIG.maxArticlesPerSourceInTopic).map((a) => ({ id: a.id, title: a.title, link: a.link, publishedAt: a.publishedAt, teaser: a.description, image: a.image })),
       });
     }
     perspectives.sort((a, b) => a.position - b.position);

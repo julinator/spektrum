@@ -50,8 +50,15 @@ export function cleanTitle(title) {
  * Bündelt Artikel zu Themen. Ein Thema braucht Artikel aus mindestens `minSources`
  * verschiedenen Quellen. Titel kommen bevorzugt aus `preferredSources` (neutrale Medien).
  */
-export function clusterArticles(articles, maxTopics, minSources = 3, preferredSources = new Set()) {
-  const sigs = articles.map((article) => {
+/** Liveticker und Sammelartikel streifen viele Themen und verfälschen die Bündelung. */
+const ROUNDUP = /^(live|erklärt|newsblog|liveblog|ticker|eilmeldung|news|podcast)\b|podcast|\+\+\+|liveblog|newsblog|live-ticker|im überblick|die wichtigsten (nachrichten|news|meldungen)|was heute wichtig ist|der tag im überblick|morgenbriefing|newsletter|heute journal|tagesthemen|\bvom \d{1,2}\. (januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)\b/i;
+
+export function isRoundup(article) {
+  return ROUNDUP.test(article.title);
+}
+
+export function clusterArticles(articles, maxTopics, minSources = 3, preferredSources = new Set(), { minMax = 0.35, minAvg = 0.16 } = {}) {
+  const sigs = articles.filter((a) => !isRoundup(a)).map((article) => {
     const base = `${article.title}. ${article.description}`;
     return { article, tokens: new Set(tokens(base)), ents: entities(base) };
   });
@@ -60,14 +67,21 @@ export function clusterArticles(articles, maxTopics, minSources = 3, preferredSo
     let best = null;
     let bestScore = 0;
     for (const cluster of clusters) {
-      let score = 0;
-      for (const member of cluster) score = Math.max(score, similarity(sig, member));
-      if (score > bestScore) {
-        bestScore = score;
+      let max = 0;
+      let sum = 0;
+      for (const member of cluster) {
+        const sim = similarity(sig, member);
+        sum += sim;
+        if (sim > max) max = sim;
+      }
+      // Muss zu einem Artikel klar passen und zum Thema insgesamt nicht völlig fremd sein
+      const avg = sum / cluster.length;
+      if (max >= minMax && (cluster.length < 3 || avg >= minAvg) && max > bestScore) {
+        bestScore = max;
         best = cluster;
       }
     }
-    if (best && bestScore >= 0.3) best.push(sig);
+    if (best) best.push(sig);
     else clusters.push([sig]);
   }
   return clusters

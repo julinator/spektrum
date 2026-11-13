@@ -1,6 +1,6 @@
 /* Service Worker: App-Dateien Netz zuerst, ohne Netz aus dem Speicher (nur über HTTPS aktiv).
    Feeds werden nicht zwischengespeichert, den letzten Stand hält die App selbst. */
-const CACHE = "spektrum-v6";
+const CACHE = "spektrum-v7";
 const SHELL = ["./", "style.css", "app.js", "js/sources.js", "js/cluster.js", "js/feeds.js", "js/pipeline.js", "manifest.webmanifest", "favicon.svg", "icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
