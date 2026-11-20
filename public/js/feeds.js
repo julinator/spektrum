@@ -51,12 +51,40 @@ function child(el, ...names) {
   return null;
 }
 
+/**
+ * Bildadressen auf eine handytaugliche Größe bringen (spart Datenvolumen).
+ * Die Regeln sind je Medium mit echten Bildern geprüft.
+ */
+function optimizeImage(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return raw;
+  }
+  const h = u.hostname;
+  if (h.endsWith("nd-aktuell.de")) u.pathname = u.pathname.replace(/\/img\/jpeg\/\d+\//, "/img/jpeg/800/");
+  else if (h === "images.tagesschau.de" && u.searchParams.has("width")) u.searchParams.set("width", "960");
+  else if (h === "images.bild.de" && u.searchParams.has("w")) u.searchParams.set("w", "800");
+  else if (h === "api.nius.de") {
+    u.searchParams.set("width", "800");
+    u.searchParams.set("height", "571");
+  } else if (h.endsWith("nzz.ch") && u.searchParams.has("width")) {
+    u.searchParams.set("width", "800");
+    u.searchParams.set("height", "800");
+  } else if (h.endsWith("zdfheute.de")) u.pathname = u.pathname.replace(/~\d+x\d+$/, "~768x432");
+  else if (h.endsWith("n-tv.de")) u.pathname = u.pathname.replace(/\/Img_\d+_\d+\/\d+\//, "/Img_16_9/620/");
+  return u.toString();
+}
+
 function cleanImageUrl(url) {
   if (!url) return "";
   const u = url.trim().replace(/^http:\/\//, "https://");
   if (!/^https:\/\//.test(u)) return "";
   if (/(\b|_)(1x1|pixel|spacer|tracking)(\b|_)/i.test(u)) return "";
-  return u;
+  // Videos und Audio sind keine Vorschaubilder
+  if (/\.(mp4|m3u8|mov|webm|mp3|m4a)(\?|$)/i.test(u)) return "";
+  return optimizeImage(u);
 }
 
 /** Vorschaubild aus Anhang, Media-RSS oder dem ersten <img> im Anrisstext. */
@@ -70,7 +98,11 @@ function imageOf(item, rawDescription) {
   }
   const media = [...item.getElementsByTagNameNS(MRSS, "*")].filter((m) => (m.localName === "content" || m.localName === "thumbnail") && m.getAttribute("url"));
   if (media.length) {
-    const images = media.filter((m) => !m.getAttribute("medium") || m.getAttribute("medium") === "image");
+    const images = media.filter((m) => {
+      const medium = m.getAttribute("medium") ?? "";
+      const type = m.getAttribute("type") ?? "";
+      return (!medium || medium === "image") && !type.startsWith("video") && !type.startsWith("audio");
+    });
     const pool = images.length ? images : media;
     // eine mittlere Größe bevorzugen (schont das Datenvolumen)
     const sized = pool.map((m) => ({ m, w: Number(m.getAttribute("width")) || 0 }));

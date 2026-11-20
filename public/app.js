@@ -18,6 +18,7 @@ const sourcesDialog = $("sources-dialog");
 const sourcesForm = $("sources-form");
 const savedDialog = $("saved-dialog");
 const leanDialog = $("lean-dialog");
+const moreDialog = $("more-dialog");
 const welcome = $("welcome");
 
 const LEAN_ORDER = ["links", "mitte-links", "mitte", "mitte-rechts", "rechts"];
@@ -257,9 +258,16 @@ function renderImage(src, className) {
     decoding: "async",
     referrerpolicy: "no-referrer",
     onerror: (event) => {
+      // Kaputtes Bild: Karte ohne Bild zeigen statt einer leeren Fläche
       const story = event.target.closest(".story");
+      const card = event.target.closest(".card");
+      const media = event.target.closest(".card-media");
       event.target.remove();
       story?.classList.remove("has-thumb");
+      if (media) {
+        media.remove();
+        card?.classList.add("no-media");
+      }
     },
   });
 }
@@ -295,8 +303,35 @@ function renderStory(a, index) {
   return node;
 }
 
+function openArticle(a, node) {
+  opened[articleKey(a)] = Date.now();
+  store(OPENED_KEY, opened);
+  node?.classList.add("is-read");
+}
+
+/** Eine Quelle als bildschirmfüllende Karte: Bild, Überschrift, Anriss. Kein eigenes Scrollen. */
 function renderPanel(p, index) {
-  const card = el("div", { class: "card", style: `--pole: ${poleColor(p.position)}` }, [
+  const a = p.articles[0];
+  const key = articleKey(a);
+  const card = el("div", { class: `card${a.image ? "" : " no-media"}${opened[key] ? " is-read" : ""}`, style: `--pole: ${poleColor(p.position)}` });
+  const main = el("a", {
+    class: "card-main",
+    href: a.link,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    onclick: () => openArticle(a, card),
+  }, [
+    a.image ? el("div", { class: "card-media" }, [renderImage(a.image, "card-image")]) : null,
+    el("div", { class: "card-text" }, [
+      el("h4", { class: "card-title", text: a.title }),
+      a.teaser ? el("p", { class: "card-teaser", text: a.teaser }) : null,
+    ]),
+    el("p", { class: "card-meta" }, [
+      el("time", { datetime: a.publishedAt, text: formatTime(a.publishedAt) }),
+      el("span", { class: "story-cta" }, ["Artikel lesen", icon("chevronRight")]),
+    ]),
+  ]);
+  card.append(
     el("header", { class: "card-head" }, [
       el("h3", { class: "source", text: p.sourceName }),
       el("button", {
@@ -306,30 +341,24 @@ function renderPanel(p, index) {
         onclick: () => openLean(p),
       }, [LEAN_LABEL[p.lean] ?? p.lean]),
     ]),
-  ]);
-  if (p.summary) {
-    if (p.tone) card.append(el("p", { class: "tone", text: `Tonfall: ${p.tone}` }));
-    card.append(el("div", { class: "summary" }, p.summary.split(/\n\s*\n/).filter(Boolean).map((t) => el("p", { text: t.trim() }))));
-    if (p.emphasis.length) {
-      card.append(el("h4", { class: "emphasis-title", text: "Was hier im Vordergrund steht" }));
-      card.append(el("ul", { class: "emphasis" }, p.emphasis.map((e) => el("li", { text: e }))));
-    }
+    main,
+  );
+  if (p.articles.length > 1) {
+    const extra = p.articles.length - 1;
+    card.append(el("button", { class: "card-more", type: "button", onclick: () => openMore(p) }, [
+      el("span", { text: extra === 1 ? `1 weiterer Artikel von ${p.sourceName}` : `${extra} weitere Artikel von ${p.sourceName}` }),
+      icon("chevronRight"),
+    ]));
   }
-  card.append(...p.articles.map(renderStory));
   return el("article", { class: "panel", "data-index": String(index), "aria-label": `${p.sourceName}, ${LEAN_LABEL[p.lean] ?? p.lean}` }, [card]);
 }
 
-function renderCoverage(perspectives) {
-  const c = coverage(perspectives);
-  const parts = [["links", "var(--left)", `${c.links} links`], ["mitte", "var(--mid)", `${c.mitte} Mitte`], ["rechts", "var(--right)", `${c.rechts} rechts`]];
-  return [
-    el("div", {
-      class: "coverage-bar",
-      role: "img",
-      "aria-label": `Abdeckung: ${c.links} Quellen links, ${c.mitte} in der Mitte, ${c.rechts} rechts`,
-    }, parts.filter(([side]) => c[side] > 0).map(([side, color]) => el("span", { class: "coverage-seg", style: `flex-grow: ${c[side]}; --pole: ${color}` }))),
-    el("p", { class: "coverage-legend", "aria-hidden": "true" }, parts.map(([, color, label]) => el("span", { style: `--pole: ${color}` }, [label]))),
-  ];
+function openMore(p) {
+  moreDialog.querySelector("#more-title").textContent = p.sourceName;
+  moreDialog.querySelector(".sheet-body").replaceChildren(
+    el("div", { class: "card more-list" }, p.articles.map((a) => renderStory(a, 1))),
+  );
+  openSheet(moreDialog);
 }
 
 /** Schlagzeilen von links nach rechts. Mit `onPick` springt ein Tipp zur Quelle, sonst öffnet er den Artikel. */
@@ -351,21 +380,6 @@ function renderHeadlines(perspectives, onPick) {
   }));
 }
 
-function renderOverview(topic, panels) {
-  const spot = blindspot(topic.perspectives);
-  const card = el("div", { class: "card overview" }, [
-    el("header", { class: "card-head" }, [
-      el("h3", { class: "source", text: "Überblick" }),
-      spot ? el("span", { class: "badge badge-blind" }, [icon("eyeSlash"), spot]) : null,
-    ]),
-    el("p", { class: "section-label", text: "Wer berichtet" }),
-    ...renderCoverage(topic.perspectives),
-    el("p", { class: "section-label", text: "Schlagzeilen von links nach rechts" }),
-    renderHeadlines(topic.perspectives, (i) => scrollToPanel(panels, i + 1)),
-  ]);
-  return el("article", { class: "panel", "data-index": "0", "aria-label": "Überblick" }, [card]);
-}
-
 function contextLine(perspectives) {
   const first = perspectives[0];
   const last = perspectives[perspectives.length - 1];
@@ -375,8 +389,7 @@ function contextLine(perspectives) {
 
 function renderTopic(topic, index, total) {
   const perspectives = topic.perspectives;
-  const panels = el("div", { class: "panels", role: "tabpanel" });
-  panels.append(renderOverview(topic, panels), ...perspectives.map((p, i) => renderPanel(p, i + 1)));
+  const panels = el("div", { class: "panels", role: "tabpanel" }, perspectives.map(renderPanel));
 
   const marks = perspectives.map((p, i) => {
     const edge = p.position < 14 ? " is-edge-left" : p.position > 86 ? " is-edge-right" : "";
@@ -385,9 +398,9 @@ function renderTopic(topic, index, total) {
       type: "button",
       role: "tab",
       style: `--x: ${p.position}%`,
-      "aria-selected": "false",
+      "aria-selected": i === 0 ? "true" : "false",
       "aria-label": `${p.sourceName} (${LEAN_LABEL[p.lean] ?? p.lean})`,
-      onclick: (event) => { event.stopPropagation(); scrollToPanel(panels, i + 1); },
+      onclick: (event) => { event.stopPropagation(); scrollToPanel(panels, i); },
     }, [el("span", { class: "mark-name", text: p.sourceName })]);
   });
 
@@ -405,7 +418,7 @@ function renderTopic(topic, index, total) {
     perspectives.forEach((p, i) => {
       if (Math.abs(p.position - x) < Math.abs(perspectives[best].position - x)) best = i;
     });
-    scrollToPanel(panels, best + 1);
+    scrollToPanel(panels, best);
   });
 
   const state = topicState(topic);
@@ -453,14 +466,40 @@ function renderTopic(topic, index, total) {
     requestAnimationFrame(() => {
       ticking = false;
       const i = panelIndexFromScroll(panels);
-      marks.forEach((m, j) => m.setAttribute("aria-selected", j === i - 1 ? "true" : "false"));
+      marks.forEach((m, j) => m.setAttribute("aria-selected", j === i ? "true" : "false"));
       prev.disabled = i <= 0;
-      next.disabled = i >= perspectives.length;
+      next.disabled = i >= perspectives.length - 1;
     });
   });
   prev.disabled = true;
-  next.disabled = false;
+  next.disabled = perspectives.length <= 1;
+  enableHeaderSwipe(section.querySelector(".topic-head"), panels);
   return section;
+}
+
+/**
+ * Seitlich wischen funktioniert auch auf Überschrift und Leiste: Der Kopf lässt
+ * vertikales Scrollen durch (touch-action: pan-y), waagerechte Wischer blättern die Quelle.
+ */
+function enableHeaderSwipe(head, panels) {
+  let x0 = null;
+  let y0 = 0;
+  head.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    x0 = event.touches[0].clientX;
+    y0 = event.touches[0].clientY;
+  }, { passive: true });
+  head.addEventListener("touchend", (event) => {
+    if (x0 === null) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - x0;
+    const dy = t.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      scrollToPanel(panels, currentPanel(panels) + (dx < 0 ? 1 : -1));
+    }
+  }, { passive: true });
+  head.addEventListener("touchcancel", () => { x0 = null; }, { passive: true });
 }
 
 function panelStep(panels) {
@@ -624,9 +663,7 @@ function openSaved(entry) {
   body.replaceChildren(
     el("h3", { class: "saved-title", text: entry.topic.title }),
     el("p", { class: "group-footer saved-meta", text: `Gemerkt ${formatTime(entry.savedAt)}. ${contextLine(entry.topic.perspectives)}.` }),
-    el("div", { class: "card overview" }, [
-      el("p", { class: "section-label", text: "Wer berichtet" }),
-      ...renderCoverage(entry.topic.perspectives),
+    el("div", { class: "card saved-card" }, [
       el("p", { class: "section-label", text: "Schlagzeilen von links nach rechts" }),
       renderHeadlines(entry.topic.perspectives, null),
     ]),
@@ -769,7 +806,7 @@ function enableDragToClose(dialog) {
   }
 }
 
-for (const dialog of [topicsDialog, sourcesDialog, savedDialog, leanDialog]) {
+for (const dialog of [topicsDialog, sourcesDialog, savedDialog, leanDialog, moreDialog]) {
   dialog.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeSheet(dialog)));
   dialog.addEventListener("click", (event) => { if (event.target === dialog) closeSheet(dialog); });
   dialog.addEventListener("cancel", (event) => { event.preventDefault(); closeSheet(dialog); });
@@ -881,8 +918,6 @@ function endPull() {
 
 feed.addEventListener("touchstart", (event) => {
   if (refreshing || feed.scrollTop > 0 || event.touches.length !== 1) return;
-  const panel = event.target.closest(".panel");
-  if (panel && panel.scrollTop > 0) return;
   pullStartY = event.touches[0].clientY;
   pullStartX = event.touches[0].clientX;
   pullDy = 0;
@@ -929,7 +964,7 @@ feed.addEventListener("touchcancel", finishTouch);
 
 document.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-  if ([topicsDialog, sourcesDialog, savedDialog, leanDialog, welcome].some((d) => d.open)) return;
+  if ([topicsDialog, sourcesDialog, savedDialog, leanDialog, moreDialog, welcome].some((d) => d.open)) return;
   const panels = feed.querySelectorAll(".topic")[activeTopicIndex]?.querySelector(".panels");
   switch (event.key) {
     case "ArrowRight": if (panels) { scrollToPanel(panels, currentPanel(panels) + 1); event.preventDefault(); } break;

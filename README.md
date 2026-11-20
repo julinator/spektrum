@@ -4,13 +4,14 @@ Ein Thema, viele Blickwinkel. Spektrum liest deutschsprachige Nachrichtenquellen
 von links bis rechts, bündelt die aktuellen Meldungen zu Themen und zeigt dir für
 jedes Thema, wie die einzelnen Quellen darüber berichten.
 
-- **Hoch und runter wischen**: von Thema zu Thema.
-- **Überblick**: Die erste Karte jedes Themas zeigt, wie viele Quellen links, in
-  der Mitte und rechts berichten, und alle Schlagzeilen von links nach rechts.
-  Greift eine Seite ein Thema kaum oder gar nicht auf, steht das als Hinweis dabei.
-- **Seitlich wischen**: dieselbe Nachricht bei der nächsten Quelle, mit Bild,
-  Anriss und Link zum Artikel. Die Leiste über dem Text zeigt, wo die Quelle steht.
-  Tippen auf einen Punkt springt direkt dorthin, Tippen auf das Etikett erklärt die Einordnung.
+- **Hoch und runter wischen**: von Thema zu Thema, egal wo der Finger startet.
+- **Seitlich wischen**: dieselbe Nachricht bei der nächsten Quelle, sortiert von
+  politisch links nach rechts. Das geht auf der Karte, der Überschrift und der Leiste.
+  Jede Karte passt genau auf den Bildschirm (Bild, Überschrift, Anriss) und scrollt
+  nie selbst. Weitere Artikel derselben Quelle öffnen sich über den Knopf unten.
+  Tippen auf einen Punkt der Leiste springt dorthin, Tippen auf das Etikett erklärt
+  die Einordnung. Greift eine Seite ein Thema kaum oder gar nicht auf, steht das als
+  Hinweis über der Überschrift.
 - **Nach unten ziehen**: sofort aktualisieren.
 - **Merken und Teilen**: Lesezeichen und Teilen-Symbol neben jedem Thema.
   Gemerkte Themen stehen oben in der Themenliste.
